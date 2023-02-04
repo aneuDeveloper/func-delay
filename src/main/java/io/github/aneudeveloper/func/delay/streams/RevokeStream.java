@@ -8,7 +8,7 @@
 * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 * 
 */
-package com.github.func.delay.streams;
+package io.github.aneudeveloper.func.delay.streams;
 
 import java.util.Properties;
 
@@ -22,7 +22,7 @@ import org.apache.kafka.streams.processor.RecordContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.func.delay.MessageDeserializer;
+import io.github.aneudeveloper.func.delay.MessageDeserializer;
 
 public class RevokeStream {
     private static final Logger LOG = LoggerFactory.getLogger(RevokeStream.class);

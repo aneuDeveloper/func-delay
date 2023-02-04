@@ -6,7 +6,7 @@
 
 ```xml
 <dependency>
-	<groupId>com.github.func</groupId>
+	<groupId>io.github.aneudeveloper.func</groupId>
 	<artifactId>func-delay</artifactId>
 	<version>1.0.0</version>
 </dependency>

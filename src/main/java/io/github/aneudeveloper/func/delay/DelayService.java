@@ -8,7 +8,7 @@
 * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 * 
 */
-package com.github.func.delay;
+package io.github.aneudeveloper.func.delay;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -25,9 +25,9 @@ import org.apache.kafka.clients.admin.NewTopic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.func.delay.streams.DelayTopicToWaitTopicStream;
-import com.github.func.delay.streams.RevokeStream;
-import com.github.func.delay.wait.WaitManager;
+import io.github.aneudeveloper.func.delay.streams.DelayTopicToWaitTopicStream;
+import io.github.aneudeveloper.func.delay.streams.RevokeStream;
+import io.github.aneudeveloper.func.delay.wait.WaitManager;
 
 public class DelayService {
     private static final Logger LOGGER = LoggerFactory.getLogger(DelayService.class);

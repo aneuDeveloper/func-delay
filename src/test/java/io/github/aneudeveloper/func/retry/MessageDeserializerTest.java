@@ -1,11 +1,11 @@
-package com.github.func.retry;
+package io.github.aneudeveloper.func.retry;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
-import com.github.func.delay.MessageDeserializer;
+import io.github.aneudeveloper.func.delay.MessageDeserializer;
 
 /**
  * Unit test for simple App.
