@@ -54,7 +54,7 @@ public class DelayTopicToWaitTopicStream {
         KStream<String, String> stream = streamsBuilder.stream(this.delayTopic);
         stream.selectKey((key, value) -> key) //
                 .mapValues(value -> {
-                    Long nextRetryAt = funcEventDeserializer.getAsLong(MessageDeserializer.NEXT_RETRY_AT_KEY, value);
+                    Long nextRetryAt = funcEventDeserializer.getExecutionDateAsMillis(value);
                     if (nextRetryAt == null) {
                         LOG.error(
                                 "NextRetryAt is undefined. This should not be happening. Current dateTime will be used (Immediate delay)");

@@ -13,7 +13,11 @@ package io.github.aneudeveloper.func.delay;
 import java.text.CharacterIterator;
 import java.text.StringCharacterIterator;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class MessageDeserializer {
+    private static final Logger LOG = LoggerFactory.getLogger(MessageDeserializer.class);
     public static final String VERSION = "1";
     public static final String META_SEPARATOR = "$e%,";
     public static final String META_PROP_SEPARATOR = ",";
@@ -25,8 +29,14 @@ public class MessageDeserializer {
         return getValue(key, data);
     }
 
-    public Long getAsLong(String key, String data) {
-        return Long.parseLong(getValue(key, data));
+    public Long getExecutionDateAsMillis(String data) {
+        String dataAsMillis = getValue(MessageDeserializer.NEXT_RETRY_AT_KEY, data);
+        try {
+            return Long.parseLong(dataAsMillis);
+        } catch (Exception e) {
+            LOG.error("Could not parse nextRetryAt", e);
+            return null;
+        }
     }
 
     private String getValue(String key, String data) {
