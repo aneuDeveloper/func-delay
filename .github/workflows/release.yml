@@ -27,8 +27,8 @@ jobs:
           allowUpdates: true
           artifacts: "${{ github.workspace }}/target/*.jar"
       - name: Publish to the Maven Central Repository
-        run: |
-          mvn --batch-mode --no-transfer-progress --batch-mode deploy -X
+        run: mvn --batch-mode --no-transfer-progress --batch-mode deploy -X
         env:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD }}
