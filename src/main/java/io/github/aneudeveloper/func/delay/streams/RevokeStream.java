@@ -70,6 +70,7 @@ public class RevokeStream {
 
     private String mergeValues(String delayEvent, String originalProcessEvent) {
         LOG.debug("Revoke message delayEvent={} originalProcessEvent={}", delayEvent, originalProcessEvent);
+        originalProcessEvent = originalProcessEvent.replaceFirst("func_type=DELAY", "func_type=WORKFLOW");
         return originalProcessEvent;
     }
 

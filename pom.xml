@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>io.github.aneudeveloper.func</groupId>
 	<artifactId>func-delay</artifactId>
-	<version>1.0.0</version>
+	<version>1.1.0</version>
 	<packaging>jar</packaging>
 	<name>Delay</name>
 	<description>Delayed return of func messages.</description>
