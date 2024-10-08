@@ -16,12 +16,14 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
+import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KTable;
 import org.apache.kafka.streams.processor.RecordContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.github.aneudeveloper.func.delay.DelayService;
 import io.github.aneudeveloper.func.delay.MessageDeserializer;
 
 public class RevokeStream {
@@ -31,13 +33,13 @@ public class RevokeStream {
     private String revokeTopic;
     private String delayTopic;
     private String delayDeadLetterQueueTopic;
-    private Thread.UncaughtExceptionHandler uncaughtExceptionHandler;
+    private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
     private MessageDeserializer funcEventDeserializer = new MessageDeserializer();
 
-    public RevokeStream(Properties properties, Thread.UncaughtExceptionHandler uncaughtExceptionHandler) {
+    public RevokeStream(Properties properties, StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
         this.uncaughtExceptionHandler = uncaughtExceptionHandler;
         this.delayDeadLetterQueueTopic = properties.getProperty("delay.dead.letter.topic");
-        String revokeStreamName = properties.getProperty("delay.revoke-stream-app-name");
+        String revokeStreamName = properties.getProperty(DelayService.DELAY_REVOKE_STREAM_APP_NAME);
         this.revokeTopic = properties.getProperty("delay.revoke-topic");
         this.delayTopic = properties.getProperty("delay.topic");
         String bootstapServer = properties.getProperty("bootstrap.servers");
@@ -63,6 +65,7 @@ public class RevokeStream {
         Topology topology = streamsBuilder.build();
         this.stream = new KafkaStreams(topology, this.revokeStreamConfig);
         if (this.uncaughtExceptionHandler != null) {
+
             this.stream.setUncaughtExceptionHandler(this.uncaughtExceptionHandler);
         }
         this.stream.start();
@@ -78,8 +81,7 @@ public class RevokeStream {
         try {
             String destinationTopic = funcEventDeserializer.getAsString(MessageDeserializer.SOURCE_TOPIC_KEY,
                     processEventAsString);
-            LOG.debug("Revoke destinationTopic={} key={} processEvent={}",
-                    new Object[] { destinationTopic, key, processEventAsString });
+            LOG.debug("Revoke destinationTopic={} key={} processEvent={}", destinationTopic, key, processEventAsString);
             if (destinationTopic == null || destinationTopic.isEmpty()) {
                 LOG.error(
                         "Key={} destinationTopic could not be discovered. Forward to " + this.delayDeadLetterQueueTopic,

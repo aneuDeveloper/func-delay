@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -26,7 +27,6 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.errors.WakeupException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,7 +39,7 @@ public class WaitTimeHandler implements Runnable {
     private KafkaConsumer<String, Long> consumer;
     private TopicSelector topicSelector;
     private CountDownLatch countDownLatch;
-    private String consumerGroup;
+    private ConsumerGroupMetadata consumerGroupMetadata;
     private Date lastPollDate;
 
     public WaitTimeHandler(Properties aCommonKafkaProducerProperties, String transactioIdPrefix,
@@ -47,10 +47,15 @@ public class WaitTimeHandler implements Runnable {
             String consumerGroupPrefix) {
         this.waitInterval = waitInterval;
         this.topicSelector = topicSelector;
-        this.consumerGroup = consumerGroupPrefix + waitInterval.getTimeDefinition();
+        this.countDownLatch = new CountDownLatch(1);
+        LOG.info("Create WaitTimeHandler with waitInterval timeDefinition={} topicName={} waitTime={}",
+                waitInterval.getTimeDefinition(), waitInterval.getTopicName(), waitInterval.getWaitTime());
+
+        this.consumerGroupMetadata = new ConsumerGroupMetadata(consumerGroupPrefix + waitInterval.getTimeDefinition());
         Properties consumerProperties = new Properties();
         consumerProperties.putAll((Map<?, ?>) aCommonConsumerProperties);
-        consumerProperties.put("group.id", this.consumerGroup);
+        consumerProperties.put("group.id", consumerGroupMetadata.groupId());
+        LOG.info("Adding group.id={}", consumerGroupMetadata.groupId());
         int waitTimeMillisForTopic = waitInterval.getWaitTime().intValue();
         int maxToWaitMillis = waitTimeMillisForTopic + 300000;
         if (waitTimeMillisForTopic >= 10800000) {
@@ -63,62 +68,73 @@ public class WaitTimeHandler implements Runnable {
         consumerProperties.put("request.timeout.ms", maxToWaitMillis);
         consumerProperties.put("fetch.min.bytes", Integer.MAX_VALUE);
         consumerProperties.put("fetch.max.wait.ms", waitTimeMillisForTopic);
-        this.countDownLatch = new CountDownLatch(1);
         this.consumer = new KafkaConsumer<String, Long>(consumerProperties);
+
+        LOG.info("Subscribe to topic {}", waitInterval.getTopicName());
+        for (Map.Entry<Object, Object> entry : consumerProperties.entrySet()) {
+            LOG.debug("Subscribe to topic {} with property {}={}", waitInterval.getTopicName(),
+                    String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
+        }
+
         this.consumer.subscribe(Arrays.asList(waitInterval.getTopicName()));
+
         Properties producerProperties = new Properties();
         producerProperties.putAll((Map<?, ?>) aCommonKafkaProducerProperties);
         producerProperties.put("transactional.id", transactioIdPrefix + waitInterval.getTimeDefinition());
         producerProperties.put("connections.max.idle.ms", maxToWaitMillis);
+
+        for (Map.Entry<Object, Object> entry : consumerProperties.entrySet()) {
+            LOG.info("Create producer in waitHandler={} with property {}={}", waitInterval.getTimeDefinition(),
+                    String.valueOf(entry.getKey()),
+                    String.valueOf(entry.getValue()));
+        }
         this.kafkaProducer = new KafkaProducer<String, Long>(producerProperties);
-        this.initTransaction();
+        this.checkConnection();
     }
 
-    /*
-     * WARNING - Removed try catching itself - possible behaviour change.
-     */
     @Override
     public void run() {
-        LOG.info("Starting consumer for waitHandler with timedefinition={} and topic={} and consumerGroup={}",
-                new Object[] { this.waitInterval.getTimeDefinition(), this.waitInterval.getTopicName(),
-                        this.consumerGroup });
+        LOG.info("Starting consumer for waitHandler with timedefinition={} and topic={} and groupInstanceId={}",
+                this.waitInterval.getTimeDefinition(), this.waitInterval.getTopicName(),
+                consumerGroupMetadata.groupId());
+
         try {
-            try {
-                while (true) {
-                    this.lastPollDate = new Date();
-                    LOG.trace("Poll for messages in topic={}", this.waitInterval.getTopicName());
-                    ConsumerRecords<String, Long> records = this.consumer
-                            .poll(Duration.ofMillis(this.waitInterval.getWaitTime()));
-                    if (records == null || records.isEmpty()) {
-                        continue;
-                    }
-                    this.kafkaProducer.beginTransaction();
-                    for (ConsumerRecord<String, Long> record : records) {
-                        String selectedTopic = this.topicSelector.selectTopic((Long) record.value());
-                        LOG.debug("Selected topic={} with key={} and value={}",
-                                new Object[] { selectedTopic, record.key(), record.value() });
-                        ProducerRecord<String, Long> producerRecord = new ProducerRecord<>(selectedTopic,
-                                record.key(), record.value());
-                        this.kafkaProducer.send(producerRecord);
-                    }
-                    HashMap<TopicPartition, OffsetAndMetadata> offsetsToCommit = new HashMap<TopicPartition, OffsetAndMetadata>();
-                    for (TopicPartition partition : records.partitions()) {
-                        List<ConsumerRecord<String, Long>> partitionedRecords = records.records(partition);
-                        long offset = partitionedRecords.get(partitionedRecords.size() - 1).offset();
-                        offsetsToCommit.put(partition, new OffsetAndMetadata(offset + 1L));
-                    }
-                    this.kafkaProducer.sendOffsetsToTransaction(offsetsToCommit, this.consumerGroup);
-                    this.kafkaProducer.commitTransaction();
+            Duration waitMillis = Duration.ofMillis(this.waitInterval.getWaitTime());
+
+            while (true) {
+                this.lastPollDate = new Date();
+                LOG.trace("Poll for messages in topic={} waitMillis={}", this.waitInterval.getTopicName(), waitMillis);
+
+                ConsumerRecords<String, Long> records = this.consumer.poll(waitMillis);
+                if (records == null || records.isEmpty()) {
+                    LOG.trace("No messages found for topic={}", this.waitInterval.getTopicName());
+                    continue;
                 }
-            } catch (WakeupException e) {
-                LOG.info("Shutdown waitHandler for timedefinition={}", this.waitInterval.getTimeDefinition());
-                this.consumer.close();
-                this.countDownLatch.countDown();
+                LOG.trace("Got {} messages for topic={} start processing...", records.count(),
+                        this.waitInterval.getTopicName());
+                this.kafkaProducer.beginTransaction();
+                for (ConsumerRecord<String, Long> record : records) {
+                    String selectedTopic = this.topicSelector.selectTopic((Long) record.value());
+                    LOG.debug("Selected topic={} with key={} and value={}", selectedTopic, record.key(),
+                            record.value());
+                    ProducerRecord<String, Long> producerRecord = new ProducerRecord<>(selectedTopic, record.key(),
+                            record.value());
+                    this.kafkaProducer.send(producerRecord);
+                }
+                HashMap<TopicPartition, OffsetAndMetadata> offsetsToCommit = new HashMap<TopicPartition, OffsetAndMetadata>();
+                for (TopicPartition partition : records.partitions()) {
+                    List<ConsumerRecord<String, Long>> partitionedRecords = records.records(partition);
+                    long offset = partitionedRecords.get(partitionedRecords.size() - 1).offset();
+                    offsetsToCommit.put(partition, new OffsetAndMetadata(offset + 1L));
+                }
+                this.kafkaProducer.sendOffsetsToTransaction(offsetsToCommit,
+                        consumerGroupMetadata);
+                this.kafkaProducer.commitTransaction();
             }
-        } catch (Throwable throwable) {
+        } finally {
+            LOG.info("Shutdown waitHandler for timedefinition={}", this.waitInterval.getTimeDefinition());
             this.consumer.close();
             this.countDownLatch.countDown();
-            throw throwable;
         }
     }
 
@@ -130,7 +146,7 @@ public class WaitTimeHandler implements Runnable {
         return this.waitInterval;
     }
 
-    private void initTransaction() {
+    private void checkConnection() {
         RuntimeException lastException = null;
         boolean initSuccessful = false;
         for (int i = 0; i < 10; ++i) {
@@ -153,7 +169,7 @@ public class WaitTimeHandler implements Runnable {
         this.consumer.wakeup();
         try {
             this.countDownLatch.await();
-            LOG.info("Close kafkaProducer for timeDefinition={}",  this.waitInterval.getTimeDefinition());
+            LOG.info("Close kafkaProducer for timeDefinition={}", this.waitInterval.getTimeDefinition());
             this.kafkaProducer.close();
         } catch (InterruptedException e) {
             LOG.error(e.getMessage(), e);

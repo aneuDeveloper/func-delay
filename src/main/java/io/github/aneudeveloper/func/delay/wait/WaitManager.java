@@ -34,8 +34,10 @@ public class WaitManager {
 
     public WaitManager(Properties properties, TopicSelector topicSelector) {
         this.topicSelector = topicSelector;
-        this.consumerGroupPrefix = String.valueOf(properties.getOrDefault("retry.wait.consumer-group-prefix", "RetryWaitGroup"));
-        this.transactioIdPrefix = String.valueOf(properties.getOrDefault("retry.producer.transactionalid-prefix", "RetryProducerId"));
+        this.consumerGroupPrefix = String
+                .valueOf(properties.getOrDefault("retry.wait.consumer-group-prefix", "RetryWaitGroup"));
+        this.transactioIdPrefix = String
+                .valueOf(properties.getOrDefault("retry.producer.transactionalid-prefix", "RetryProducerId"));
         String bootstapServer = String.valueOf(properties.getOrDefault("bootstrap.servers", "127.0.0.1:9092"));
         this.commonConsumerProperties = new Properties();
         this.commonConsumerProperties.put("bootstrap.servers", bootstapServer);
@@ -61,14 +63,17 @@ public class WaitManager {
 
     public Map<TopicSelector.WaitTopic, Date> getLastPolls() {
         HashMap<TopicSelector.WaitTopic, Date> result = new HashMap<>();
-        this.waitTimeHandlers.forEach(waitTimeHandler -> result.put(waitTimeHandler.getHandler().getWaitTopic(), waitTimeHandler.getHandler().getLastPollDate()));
+        this.waitTimeHandlers.forEach(waitTimeHandler -> result.put(waitTimeHandler.getHandler().getWaitTopic(),
+                waitTimeHandler.getHandler().getLastPollDate()));
         return result;
     }
 
     public void start() {
         List<TopicSelector.WaitTopic> waitIntervals = this.topicSelector.getWaitTopics();
         for (TopicSelector.WaitTopic waitInterval : waitIntervals) {
-            WaitTimeHandler waitTimeHandler = new WaitTimeHandler(this.commonKafkaProducerProperties, this.transactioIdPrefix, waitInterval, this.topicSelector, this.commonConsumerProperties, this.consumerGroupPrefix);
+            WaitTimeHandler waitTimeHandler = new WaitTimeHandler(this.commonKafkaProducerProperties,
+                    this.transactioIdPrefix, waitInterval, this.topicSelector, this.commonConsumerProperties,
+                    this.consumerGroupPrefix);
             WaitThread thread = new WaitThread(waitTimeHandler);
             this.waitTimeHandlers.add(thread);
             thread.start();
@@ -81,8 +86,7 @@ public class WaitManager {
         }
     }
 
-    private static class WaitThread
-    extends Thread {
+    private static class WaitThread extends Thread {
         private WaitTimeHandler handler;
 
         public WaitThread(WaitTimeHandler waitTimeHandler) {
@@ -95,4 +99,3 @@ public class WaitManager {
         }
     }
 }
-

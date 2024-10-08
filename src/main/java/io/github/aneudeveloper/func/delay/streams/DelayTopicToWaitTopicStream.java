@@ -15,6 +15,7 @@ import java.util.Properties;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
+import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Produced;
 import org.slf4j.Logger;
@@ -29,11 +30,11 @@ public class DelayTopicToWaitTopicStream {
     private TopicSelector topicSelector;
     private Properties delayTableToWaitTopicStreamConfig;
     private KafkaStreams streams;
-    private Thread.UncaughtExceptionHandler uncaughtExceptionHandler;
+    private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
     private MessageDeserializer funcEventDeserializer = new MessageDeserializer();
 
     public DelayTopicToWaitTopicStream(TopicSelector topicSelector, Properties properties,
-            Thread.UncaughtExceptionHandler uncaughtExceptionHandler) {
+            StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
         this.topicSelector = topicSelector;
         this.uncaughtExceptionHandler = uncaughtExceptionHandler;
         this.delayTopic = properties.getProperty("delay.topic");
@@ -64,7 +65,7 @@ public class DelayTopicToWaitTopicStream {
                     return nextRetryAt;
                 }).to((key, value, recordContext) -> {
                     String waitTopic = this.topicSelector.selectTopic((long) value);
-                    LOG.debug("Select topic={} key={} for nextRetryAt={}", new Object[] { waitTopic, key, value });
+                    LOG.debug("Select topic={} key={} for nextRetryAt={}", waitTopic, key, value);
                     return waitTopic;
                 }, Produced.valueSerde(Serdes.Long()));
         this.streams = new KafkaStreams(streamsBuilder.build(), this.delayTableToWaitTopicStreamConfig);

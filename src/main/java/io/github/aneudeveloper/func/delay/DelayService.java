@@ -22,6 +22,7 @@ import java.util.concurrent.ExecutionException;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +49,7 @@ public class DelayService {
     private Properties properties;
     private TopicSelector topicSelector;
 
-    public DelayService(Properties properties, Thread.UncaughtExceptionHandler uncaughtExceptionHandler) {
+    public DelayService(Properties properties, StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
         this.properties = this.addMissingPropertiesWithDefaultValues(properties);
         this.topicSelector = new TopicSelector(properties);
         this.delayTableToWaitTopicStream = new DelayTopicToWaitTopicStream(this.topicSelector, properties,
@@ -81,7 +82,7 @@ public class DelayService {
         this.addIfMissing(properties, KAFKA_BOOTSTRAP_SERVERS, "127.0.0.1:9092");
         this.addIfMissing(properties, DELAY_WAIT_TOPICS, "15S, 1M, 5M, 15M, 1H, 12H");
         this.addIfMissing(properties, DELAY_WAIT_TOPICS_PREFIX, "DELAY_WAIT_");
-        this.addIfMissing(properties, DELAY_REVOKE_STREAM_APP_NAME, "RevokeStream");
+        this.addIfMissing(properties, DELAY_REVOKE_STREAM_APP_NAME, "DELAY");
         this.addIfMissing(properties, TOPIC_DEFAULT_REPLICATION_FACTOR, "1");
         this.addIfMissing(properties, TOPIC_DEFAULT_NUM_PARTITIONS, "1");
         this.addIfMissing(properties, TOPIC_DEFAULT_RETENTION_MS, "2592000000");
