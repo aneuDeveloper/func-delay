@@ -33,11 +33,9 @@ public class RevokeStream {
     private String revokeTopic;
     private String delayTopic;
     private String delayDeadLetterQueueTopic;
-    private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
     private MessageDeserializer funcEventDeserializer = new MessageDeserializer();
 
-    public RevokeStream(Properties properties, StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
-        this.uncaughtExceptionHandler = uncaughtExceptionHandler;
+    public RevokeStream(Properties properties) {
         this.delayDeadLetterQueueTopic = properties.getProperty("delay.dead.letter.topic");
         String revokeStreamName = properties.getProperty(DelayService.DELAY_REVOKE_STREAM_APP_NAME);
         this.revokeTopic = properties.getProperty("delay.revoke-topic");
@@ -64,11 +62,11 @@ public class RevokeStream {
 
         Topology topology = streamsBuilder.build();
         this.stream = new KafkaStreams(topology, this.revokeStreamConfig);
-        if (this.uncaughtExceptionHandler != null) {
-
-            this.stream.setUncaughtExceptionHandler(this.uncaughtExceptionHandler);
-        }
         this.stream.start();
+    }
+
+    public void setUncaughtExceptionHandler(final StreamsUncaughtExceptionHandler userStreamsUncaughtExceptionHandler) {
+        this.stream.setUncaughtExceptionHandler(userStreamsUncaughtExceptionHandler);
     }
 
     private String mergeValues(String delayEvent, String originalProcessEvent) {

@@ -55,7 +55,11 @@ public class DelayService {
         this.delayTableToWaitTopicStream = new DelayTopicToWaitTopicStream(this.topicSelector, properties,
                 uncaughtExceptionHandler);
         this.waitManager = new WaitManager(properties, this.topicSelector);
-        this.revokeStream = new RevokeStream(properties,  uncaughtExceptionHandler);
+        this.revokeStream = new RevokeStream(properties);
+    }
+
+    public void setStreamsUncaughtExceptionHandler(StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
+        this.revokeStream.setUncaughtExceptionHandler(uncaughtExceptionHandler);
     }
 
     public Map<TopicSelector.WaitTopic, Date> getLastPolls() {
@@ -80,7 +84,7 @@ public class DelayService {
         this.addIfMissing(properties, DELAY_DEAD_LETTER_TOPIC, "DELAY_DEAD_LETTER");
         this.addIfMissing(properties, DELAY_REVOKE_TOPIC, "DELAY_REVOKE_TOPIC");
         this.addIfMissing(properties, KAFKA_BOOTSTRAP_SERVERS, "127.0.0.1:9092");
-        this.addIfMissing(properties, DELAY_WAIT_TOPICS, "15S, 1M, 5M, 15M, 1H, 12H");
+        this.addIfMissing(properties, DELAY_WAIT_TOPICS, "15S, 1M, 5M");
         this.addIfMissing(properties, DELAY_WAIT_TOPICS_PREFIX, "DELAY_WAIT_");
         this.addIfMissing(properties, DELAY_REVOKE_STREAM_APP_NAME, "DELAY");
         this.addIfMissing(properties, TOPIC_DEFAULT_REPLICATION_FACTOR, "1");
