@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
 
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -41,6 +42,7 @@ public class WaitTimeHandler implements Runnable {
     private TopicSelector topicSelector;
     private ConsumerGroupMetadata consumerGroupMetadata;
     private Date lastPollDate;
+    private CountDownLatch countDownLatch;
 
     public WaitTimeHandler(KafkaProducer<String, Long> kafkaProducer, TopicSelector.WaitTopic waitInterval,
             TopicSelector topicSelector, Properties commonConsumerProperties,
@@ -48,6 +50,7 @@ public class WaitTimeHandler implements Runnable {
         this.kafkaProducer = kafkaProducer;
         this.waitInterval = waitInterval;
         this.topicSelector = topicSelector;
+        this.countDownLatch = new CountDownLatch(1);
         LOG.info("Create WaitTimeHandler with waitInterval timeDefinition={} topicName={} waitTime={}",
                 waitInterval.getTimeDefinition(), waitInterval.getTopicName(), waitInterval.getWaitTime());
 
@@ -133,6 +136,7 @@ public class WaitTimeHandler implements Runnable {
         } finally {
             LOG.info("Shutdown waitHandler for timedefinition={}", this.waitInterval.getTimeDefinition());
             this.consumer.close();
+            this.countDownLatch.countDown();
         }
     }
 
@@ -142,25 +146,6 @@ public class WaitTimeHandler implements Runnable {
 
     public TopicSelector.WaitTopic getWaitTopic() {
         return this.waitInterval;
-    }
-
-    private void initTransaction() {
-        RuntimeException lastException = null;
-        boolean initSuccessful = false;
-        for (int i = 0; i < 10; ++i) {
-            try {
-                this.kafkaProducer.initTransactions();
-                initSuccessful = true;
-                break;
-            } catch (RuntimeException e) {
-                lastException = e;
-                LOG.warn(e.getMessage(), e);
-                continue;
-            }
-        }
-        if (!initSuccessful) {
-            throw lastException;
-        }
     }
 
     public void close() {
