@@ -8,7 +8,6 @@
 <dependency>
 	<groupId>io.github.aneudeveloper.func</groupId>
 	<artifactId>func-delay</artifactId>
-	<version>1.0.0</version>
 </dependency>
 ```
 
@@ -33,4 +32,7 @@ How to start the delay service.
     delayService.start();
 
 ```
+
+#### Configuration
+DELAY_WAIT_TOPICS example 15S, 1M, 5M, 15M, 1H, 12H
 

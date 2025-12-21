@@ -45,7 +45,7 @@ public class RevokeStream {
     public RevokeStream(Properties properties, StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
         this.uncaughtExceptionHandler = uncaughtExceptionHandler;
         this.delayDeadLetterQueueTopic = properties.getProperty("delay.dead.letter.topic");
-        String revokeStreamName = properties.getProperty("delay.revoke-stream-app-name");
+        String revokeStreamName = properties.getProperty(DelayService.DELAY_REVOKE_STREAM_APP_NAME);
         this.revokeTopic = properties.getProperty("delay.revoke-topic");
         this.delayTopic = properties.getProperty("delay.topic");
         this.delayWithHeaderTopic = properties.getProperty(DelayService.DELAY_TOPIC_WITH_HEADER);

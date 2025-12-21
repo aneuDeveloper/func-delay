@@ -21,8 +21,9 @@ public class TopicSelector {
     private Supplier<Long> currentTimeSupplier;
 
     public TopicSelector(Properties properties) {
-        this.setupIntervals(properties.getProperty("delay.topics"), properties.getProperty("delay.topics.prefix"));
-        this.revokeTopic = properties.getProperty("delay.revoke-topic");
+        this.setupIntervals(properties.getProperty(DelayService.DELAY_WAIT_TOPICS),
+                properties.getProperty(DelayService.DELAY_WAIT_TOPICS_PREFIX));
+        this.revokeTopic = properties.getProperty(DelayService.DELAY_REVOKE_TOPIC);
         this.currentTimeSupplier = () -> System.currentTimeMillis();
     }
 

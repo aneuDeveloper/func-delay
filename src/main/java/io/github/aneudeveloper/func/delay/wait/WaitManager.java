@@ -16,26 +16,30 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.UUID;
 
+import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.common.serialization.LongDeserializer;
 import org.apache.kafka.common.serialization.LongSerializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.github.aneudeveloper.func.delay.TopicSelector;
 
 public class WaitManager {
+    private static final Logger LOG = LoggerFactory.getLogger(WaitManager.class);
     private TopicSelector topicSelector;
     private List<WaitThread> waitTimeHandlers = new ArrayList<>();
     private Properties commonConsumerProperties;
     private String consumerGroupPrefix;
-    private String transactioIdPrefix;
-    private Properties commonKafkaProducerProperties;
+    private KafkaProducer<String, Long> kafkaProducer;
 
     public WaitManager(Properties properties, TopicSelector topicSelector) {
         this.topicSelector = topicSelector;
-        this.consumerGroupPrefix = String.valueOf(properties.getOrDefault("retry.wait.consumer-group-prefix", "RetryWaitGroup"));
-        this.transactioIdPrefix = String.valueOf(properties.getOrDefault("retry.producer.transactionalid-prefix", "RetryProducerId"));
+        this.consumerGroupPrefix = String
+                .valueOf(properties.getOrDefault("retry.wait.consumer-group-prefix", "RetryWaitGroup"));
         String bootstapServer = String.valueOf(properties.getOrDefault("bootstrap.servers", "127.0.0.1:9092"));
         this.commonConsumerProperties = new Properties();
         this.commonConsumerProperties.put("bootstrap.servers", bootstapServer);
@@ -45,30 +49,41 @@ public class WaitManager {
         this.commonConsumerProperties.put("auto.offset.reset", "earliest");
         this.commonConsumerProperties.put("isolation.level", "read_committed");
         this.commonConsumerProperties.put("allow.auto.create.topics", false);
-        this.commonKafkaProducerProperties = new Properties();
-        this.commonKafkaProducerProperties.setProperty("bootstrap.servers", bootstapServer);
-        this.commonKafkaProducerProperties.setProperty("key.serializer", StringSerializer.class.getName());
-        this.commonKafkaProducerProperties.setProperty("value.serializer", LongSerializer.class.getName());
-        this.commonKafkaProducerProperties.setProperty("enable.idempotence", "true");
-        this.commonKafkaProducerProperties.setProperty("acks", "all");
-        this.commonKafkaProducerProperties.setProperty("retries", Integer.toString(Integer.MAX_VALUE));
-        this.commonKafkaProducerProperties.setProperty("max.in.flight.requests.per.connection", "5");
-        this.commonKafkaProducerProperties.setProperty("compression.type", "snappy");
-        this.commonKafkaProducerProperties.setProperty("max.block.ms", "60000");
-        this.commonKafkaProducerProperties.setProperty("linger.ms", "20");
-        this.commonKafkaProducerProperties.setProperty("batch.size", Integer.toString(32768));
+
+        Properties producerProperties = new Properties();
+        producerProperties.setProperty("bootstrap.servers", bootstapServer);
+        producerProperties.setProperty("key.serializer", StringSerializer.class.getName());
+        producerProperties.setProperty("value.serializer", LongSerializer.class.getName());
+        producerProperties.setProperty("enable.idempotence", "true");
+        producerProperties.setProperty("acks", "all");
+        producerProperties.setProperty("retries", "10");
+        producerProperties.setProperty("compression.type", "snappy");
+
+        String transactioId = String
+                .valueOf(properties.getOrDefault("retry.producer.transactionalid",
+                        "delay-transaction-id-" + UUID.randomUUID().toString()));
+        producerProperties.setProperty("transactional.id", transactioId);
+
+        for (Map.Entry<Object, Object> entry : producerProperties.entrySet()) {
+            LOG.info("Creating producer with {}={}", String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
+        }
+        this.kafkaProducer = new KafkaProducer<String, Long>(producerProperties);
+        this.kafkaProducer.initTransactions();
     }
 
     public Map<TopicSelector.WaitTopic, Date> getLastPolls() {
         HashMap<TopicSelector.WaitTopic, Date> result = new HashMap<>();
-        this.waitTimeHandlers.forEach(waitTimeHandler -> result.put(waitTimeHandler.getHandler().getWaitTopic(), waitTimeHandler.getHandler().getLastPollDate()));
+        this.waitTimeHandlers.forEach(waitTimeHandler -> result.put(waitTimeHandler.getHandler().getWaitTopic(),
+                waitTimeHandler.getHandler().getLastPollDate()));
         return result;
     }
 
     public void start() {
         List<TopicSelector.WaitTopic> waitIntervals = this.topicSelector.getWaitTopics();
         for (TopicSelector.WaitTopic waitInterval : waitIntervals) {
-            WaitTimeHandler waitTimeHandler = new WaitTimeHandler(this.commonKafkaProducerProperties, this.transactioIdPrefix, waitInterval, this.topicSelector, this.commonConsumerProperties, this.consumerGroupPrefix);
+            WaitTimeHandler waitTimeHandler = new WaitTimeHandler(this.kafkaProducer, waitInterval, this.topicSelector,
+                    this.commonConsumerProperties,
+                    this.consumerGroupPrefix);
             WaitThread thread = new WaitThread(waitTimeHandler);
             this.waitTimeHandlers.add(thread);
             thread.start();
@@ -77,12 +92,15 @@ public class WaitManager {
 
     public void close() {
         if (this.waitTimeHandlers != null) {
-            this.waitTimeHandlers.forEach(thread -> thread.getHandler().close());
+            this.waitTimeHandlers.forEach(thread -> thread.interrupt());
+        }
+        if (this.kafkaProducer != null) {
+            LOG.info("Closing kafkaProducer");
+            this.kafkaProducer.close();
         }
     }
 
-    private static class WaitThread
-    extends Thread {
+    private static class WaitThread extends Thread {
         private WaitTimeHandler handler;
 
         public WaitThread(WaitTimeHandler waitTimeHandler) {
@@ -95,4 +113,3 @@ public class WaitManager {
         }
     }
 }
-

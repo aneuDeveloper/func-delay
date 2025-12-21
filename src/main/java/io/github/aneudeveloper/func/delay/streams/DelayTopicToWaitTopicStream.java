@@ -53,22 +53,9 @@ public class DelayTopicToWaitTopicStream {
         StreamsBuilder streamsBuilder = new StreamsBuilder();
         KStream<String, byte[]> stream = streamsBuilder.stream(this.delayTopicWithHeader);
         stream.process(()->new DelayToWaitProcessor())
-        
-        // selectKey((key, value) -> key) //
-        //         .mapValues(value -> {
-        //             Long nextRetryAt = funcEventDeserializer.getExecutionDateAsMillis(value);
-        //             if (nextRetryAt == null) {
-        //                 LOG.error(
-        //                         "NextRetryAt is undefined. This should not be happening. Current dateTime will be used (Immediate delay)");
-        //                 nextRetryAt = System.currentTimeMillis();
-        //             }
-        //             LOG.debug("Map from delayTable nextRetryAt={} value={}", nextRetryAt, value);
-        //             return nextRetryAt;
-        //         })
-                
                 .to((key, value, recordContext) -> {
                     String waitTopic = this.topicSelector.selectTopic((long) value);
-                    LOG.debug("Select topic={} key={} for executeAt={}", new Object[] { waitTopic, key, value });
+                    LOG.debug("Select topic={} key={} for nextRetryAt={}", waitTopic, key, value);
                     return waitTopic;
                 }, Produced.valueSerde(Serdes.Long()));
         this.streams = new KafkaStreams(streamsBuilder.build(), this.delayTableToWaitTopicStreamConfig);
