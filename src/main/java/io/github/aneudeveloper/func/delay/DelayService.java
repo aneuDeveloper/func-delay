@@ -22,6 +22,7 @@ import java.util.concurrent.ExecutionException;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,24 +38,29 @@ public class DelayService {
     public static final String DELAY_WAIT_TOPIC_PREFIX = "delay.wait.topic-prefix";
     public static final String DELAY_REVOKE_TOPIC = "delay.revoke-topic";
     public static final String DELAY_TOPIC = "delay.topic";
+    public static final String DELAY_TOPIC_WITH_HEADER = "delay.with.header";
     public static final String DELAY_DEAD_LETTER_TOPIC = "delay.dead.letter.topic";
     public static final String TOPIC_DEFAULT_REPLICATION_FACTOR = "topic.default.replication.factor";
     public static final String TOPIC_DEFAULT_NUM_PARTITIONS = "topic.default.num.partitions";
     public static final String TOPIC_DEFAULT_RETENTION_MS = "topic.default.retention.ms";
     public static final String DELAY_REVOKE_STREAM_APP_NAME = "delay.revoke-stream-app-name";
+
+    public static final String EXECUTE_AT = "executeAt";
+    public static final String SOURCE_TOPIC = "sourceTopic";
+
     private DelayTopicToWaitTopicStream delayTableToWaitTopicStream;
     private WaitManager waitManager;
     private RevokeStream revokeStream;
     private Properties properties;
     private TopicSelector topicSelector;
 
-    public DelayService(Properties properties, Thread.UncaughtExceptionHandler uncaughtExceptionHandler) {
+    public DelayService(Properties properties, StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
         this.properties = this.addMissingPropertiesWithDefaultValues(properties);
         this.topicSelector = new TopicSelector(properties);
         this.delayTableToWaitTopicStream = new DelayTopicToWaitTopicStream(this.topicSelector, properties,
                 uncaughtExceptionHandler);
         this.waitManager = new WaitManager(properties, this.topicSelector);
-        this.revokeStream = new RevokeStream(properties,  uncaughtExceptionHandler);
+        this.revokeStream = new RevokeStream(properties, uncaughtExceptionHandler);
     }
 
     public Map<TopicSelector.WaitTopic, Date> getLastPolls() {
@@ -76,6 +82,7 @@ public class DelayService {
 
     private Properties addMissingPropertiesWithDefaultValues(Properties properties) {
         this.addIfMissing(properties, DELAY_TOPIC, "DELAY");
+        this.addIfMissing(properties, DELAY_TOPIC_WITH_HEADER, "DELAY_WITH_HEADER");
         this.addIfMissing(properties, DELAY_DEAD_LETTER_TOPIC, "DELAY_DEAD_LETTER");
         this.addIfMissing(properties, DELAY_REVOKE_TOPIC, "DELAY_REVOKE_TOPIC");
         this.addIfMissing(properties, KAFKA_BOOTSTRAP_SERVERS, "127.0.0.1:9092");

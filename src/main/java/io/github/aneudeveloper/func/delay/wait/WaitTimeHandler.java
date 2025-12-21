@@ -107,7 +107,7 @@ public class WaitTimeHandler implements Runnable {
                         long offset = partitionedRecords.get(partitionedRecords.size() - 1).offset();
                         offsetsToCommit.put(partition, new OffsetAndMetadata(offset + 1L));
                     }
-                    this.kafkaProducer.sendOffsetsToTransaction(offsetsToCommit, this.consumerGroup);
+                    this.kafkaProducer.sendOffsetsToTransaction(offsetsToCommit, this.consumer.groupMetadata());
                     this.kafkaProducer.commitTransaction();
                 }
             } catch (WakeupException e) {
@@ -153,7 +153,7 @@ public class WaitTimeHandler implements Runnable {
         this.consumer.wakeup();
         try {
             this.countDownLatch.await();
-            LOG.info("Close kafkaProducer for timeDefinition={}",  this.waitInterval.getTimeDefinition());
+            LOG.info("Close kafkaProducer for timeDefinition={}", this.waitInterval.getTimeDefinition());
             this.kafkaProducer.close();
         } catch (InterruptedException e) {
             LOG.error(e.getMessage(), e);
