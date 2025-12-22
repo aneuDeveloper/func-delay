@@ -2,12 +2,12 @@ package io.github.aneudeveloper.func.delay;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 
@@ -50,7 +50,8 @@ public class KafkaHelper {
         return returnVal;
     }
 
-    public void produceMessage(ZonedDateTime executeAt, String executeTopic, String key, String message)
+    public void produceMessage(ZonedDateTime executeAt, String executeTopic, String key, String message,
+            Map<String, String> customHeader)
             throws InterruptedException, ExecutionException {
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "127.0.01:9092");
@@ -69,10 +70,15 @@ public class KafkaHelper {
         ProducerRecord<String, byte[]> record = new ProducerRecord<>("DELAY", key, payload);
 
         record.headers().add(new RecordHeader(
-                DelayService.SOURCE_TOPIC, executeTopic.getBytes(StandardCharsets.UTF_8)));
+                DelayService.DESTINATION_TOPIC, executeTopic.getBytes(StandardCharsets.UTF_8)));
 
         record.headers().add(new RecordHeader(DelayService.EXECUTE_AT,
                 executeAt.format(DelayToWaitProcessor.TIME_STAMP_FORMATTER).getBytes(StandardCharsets.UTF_8)));
+
+        for (Entry<String, String> entry : customHeader.entrySet()) {
+            record.headers().add(new RecordHeader(entry.getKey(),
+                    entry.getValue().getBytes(StandardCharsets.UTF_8)));
+        }
 
         producer.send(record).get();
 

@@ -36,3 +36,6 @@ How to start the delay service.
 #### Configuration
 DELAY_WAIT_TOPICS example 15S, 1M, 5M, 15M, 1H, 12H
 
+#### Integration Tests
+Run kafka locally at port 9092 before executing integration tests.
+

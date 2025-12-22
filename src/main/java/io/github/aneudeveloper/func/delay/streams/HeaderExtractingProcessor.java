@@ -10,7 +10,6 @@
 */
 package io.github.aneudeveloper.func.delay.streams;
 
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 
 import org.apache.kafka.common.header.Header;
@@ -36,7 +35,7 @@ public class HeaderExtractingProcessor implements Processor<String, byte[], Stri
         enriched.headers = new HashMap<>();
         if (headers != null) {
             for (Header header : headers) {
-                enriched.headers.put(header.key(), header.value());
+                enriched.headers.put(header.key(), new String(header.value()));
             }
         }
 

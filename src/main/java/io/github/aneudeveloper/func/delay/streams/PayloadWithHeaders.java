@@ -13,6 +13,6 @@ package io.github.aneudeveloper.func.delay.streams;
 import java.util.Map;
 
 public class PayloadWithHeaders {
-    public Map<String, byte[]> headers;
+    public Map<String, String> headers;
     public byte[] originalMessagePayload;
 }

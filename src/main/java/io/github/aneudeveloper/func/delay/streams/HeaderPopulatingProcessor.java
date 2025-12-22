@@ -10,6 +10,7 @@
 */
 package io.github.aneudeveloper.func.delay.streams;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Map.Entry;
 
 import org.apache.kafka.common.header.internals.RecordHeaders;
@@ -29,8 +30,8 @@ public class HeaderPopulatingProcessor implements Processor<String, PayloadWithH
     @Override
     public void process(Record<String, PayloadWithHeaders> record) {
         RecordHeaders recordHeaders = new RecordHeaders();
-        for (Entry<String, byte[]> entry : record.value().headers.entrySet()) {
-            recordHeaders.add(entry.getKey(), entry.getValue());
+        for (Entry<String, String> entry : record.value().headers.entrySet()) {
+            recordHeaders.add(entry.getKey(), entry.getValue().getBytes(StandardCharsets.UTF_8));
         }
 
         Record<String, byte[]> originalRecord = record.withValue(record.value().originalMessagePayload)//

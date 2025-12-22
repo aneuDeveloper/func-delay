@@ -110,7 +110,7 @@ public class RevokeStream {
     private String selectDestinationTopic(String key, byte[] processEventAsString, RecordContext recordContext) {
         try {
             String destinationTopic = new String(
-                    recordContext.headers().headers(DelayService.SOURCE_TOPIC).iterator().next().value());
+                    recordContext.headers().headers(DelayService.DESTINATION_TOPIC).iterator().next().value());
             LOG.debug("Revoke destinationTopic={} key={} processEvent={}",
                     new Object[] { destinationTopic, key, processEventAsString });
             if (destinationTopic == null || destinationTopic.isEmpty()) {

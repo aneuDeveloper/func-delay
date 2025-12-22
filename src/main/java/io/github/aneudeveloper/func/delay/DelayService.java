@@ -45,8 +45,8 @@ public class DelayService {
     public static final String TOPIC_DEFAULT_RETENTION_MS = "topic.default.retention.ms";
     public static final String DELAY_REVOKE_STREAM_APP_NAME = "delay.revoke-stream-app-name";
 
-    public static final String EXECUTE_AT = "executeAt";
-    public static final String SOURCE_TOPIC = "sourceTopic";
+    public static final String EXECUTE_AT = "execute_at";
+    public static final String DESTINATION_TOPIC = "destination_topic";
 
     private DelayTopicToWaitTopicStream delayTableToWaitTopicStream;
     private WaitManager waitManager;

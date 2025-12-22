@@ -37,12 +37,12 @@ public class DelayTopicToWaitTopicStream {
         this.topicSelector = topicSelector;
         this.uncaughtExceptionHandler = uncaughtExceptionHandler;
         this.delayTopicWithHeader = properties.getProperty(DelayService.DELAY_TOPIC_WITH_HEADER);
-        String bootstapServer = properties.getProperty("bootstrap.servers");
+        String bootstapServer = properties.getProperty(DelayService.KAFKA_BOOTSTRAP_SERVERS);
         String replicationFactor = properties.getProperty("topic.default.replication.factor");
         this.delayTableToWaitTopicStreamConfig = new Properties();
         this.delayTableToWaitTopicStreamConfig.put("replication.factor", replicationFactor);
         this.delayTableToWaitTopicStreamConfig.put("application.id", "RetryTableToWaitTopicStream");
-        this.delayTableToWaitTopicStreamConfig.put("bootstrap.servers", bootstapServer);
+        this.delayTableToWaitTopicStreamConfig.put(DelayService.KAFKA_BOOTSTRAP_SERVERS, bootstapServer);
         this.delayTableToWaitTopicStreamConfig.put("default.key.serde", Serdes.String().getClass());
         this.delayTableToWaitTopicStreamConfig.put("default.value.serde", Serdes.String().getClass());
         this.delayTableToWaitTopicStreamConfig.put("processing.guarantee", "exactly_once_v2");
@@ -52,7 +52,7 @@ public class DelayTopicToWaitTopicStream {
         LOG.info("Start");
         StreamsBuilder streamsBuilder = new StreamsBuilder();
         KStream<String, byte[]> stream = streamsBuilder.stream(this.delayTopicWithHeader);
-        stream.process(()->new DelayToWaitProcessor())
+        stream.process(() -> new DelayToWaitProcessor())
                 .to((key, value, recordContext) -> {
                     String waitTopic = this.topicSelector.selectTopic((long) value);
                     LOG.debug("Select topic={} key={} for nextRetryAt={}", waitTopic, key, value);
