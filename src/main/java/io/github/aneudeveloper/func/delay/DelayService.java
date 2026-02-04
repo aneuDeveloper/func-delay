@@ -113,6 +113,9 @@ public class DelayService {
                     properties, null);
             this.addTopicIfNotExist(existingTopics, topicsToCreate, properties.getProperty(DELAY_TOPIC), properties,
                     "compact");
+            this.addTopicIfNotExist(existingTopics, topicsToCreate, properties.getProperty(DELAY_TOPIC_WITH_HEADER),
+                    properties,
+                    "compact");
             topicSelector.getWaitTopics().stream().forEach(timeInterval -> {
                 String topicName = timeInterval.getTopicName();
                 this.addTopicIfNotExist(existingTopics, topicsToCreate, topicName, properties, null);

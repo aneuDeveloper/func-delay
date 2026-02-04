@@ -5,7 +5,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>io.github.aneudeveloper.func</groupId>
 	<artifactId>func-delay</artifactId>
-	<version>2.1.0</version>
+	<version>2.1.1</version>
 	<packaging>jar</packaging>
 	<name>Delay</name>
 	<description>Delayed return of func messages.</description>
@@ -36,7 +36,6 @@
 		<maven.compiler.source>${java.version}</maven.compiler.source>
 		<maven.compiler.target>${java.version}</maven.compiler.target>
 	</properties>
-
 	<dependencies>
 		<dependency>
 			<groupId>org.apache.kafka</groupId>
@@ -62,12 +61,11 @@
 			<version>5.9.1</version>
 			<scope>test</scope>
 		</dependency>
-
-		<!-- https://mvnrepository.com/artifact/com.google.code.gson/gson -->
 		<dependency>
 			<groupId>com.google.code.gson</groupId>
 			<artifactId>gson</artifactId>
 			<version>2.13.2</version>
+			<scope>provided</scope>
 		</dependency>
 	</dependencies>
 	<build>
@@ -88,15 +86,12 @@
 			</plugin>
 		</plugins>
 	</build>
-
 	<profiles>
 		<profile>
 			<id>release</id>
-
 			<properties>
 				<env>release</env>
 			</properties>
-
 			<build>
 				<plugins>
 					<plugin>
@@ -171,11 +166,9 @@
 		</profile>
 		<profile>
 			<id>local</id>
-
 			<properties>
 				<env>local</env>
 			</properties>
-
 			<build>
 				<plugins>
 					<plugin>
@@ -188,11 +181,9 @@
 		</profile>
 		<profile>
 			<id>integration</id>
-
 			<properties>
 				<env>integration</env>
 			</properties>
-
 			<build>
 				<plugins>
 					<plugin>
@@ -220,7 +211,6 @@
 			</build>
 		</profile>
 	</profiles>
-
 	<distributionManagement>
 		<snapshotRepository>
 			<id>ossrh</id>
