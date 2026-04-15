@@ -49,7 +49,7 @@ public class CommonUseCaseIT {
         String message = "some message. could be anything executeAt="
                 + executeAt.format(DelayToWaitProcessor.TIME_STAMP_FORMATTER);
 
-        String workingTopic = "TestDelay-WORKFLOW-" + System.currentTimeMillis();
+        String workingTopic = "TestDelay-WORKFLOW";
         kafkaHelper.produceMessage(executeAt, workingTopic, key, message,
                 someCustomHeader);
 

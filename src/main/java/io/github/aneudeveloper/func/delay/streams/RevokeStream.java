@@ -34,6 +34,7 @@ import io.github.aneudeveloper.func.delay.DelayService;
 public class RevokeStream {
     private static final Logger LOG = LoggerFactory.getLogger(RevokeStream.class);
     private Properties revokeStreamConfig;
+    private KafkaStreams delayToDelayWithHeader;
     private KafkaStreams stream;
     private String revokeTopic;
     private String delayTopic;
@@ -41,6 +42,20 @@ public class RevokeStream {
     private String delayDeadLetterQueueTopic;
     private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
     private Gson gson = new Gson();
+    Serde<PayloadWithHeaders> payloadWithHeadersSerde = Serdes.serdeFrom(new Serializer<PayloadWithHeaders>() {
+        @Override
+        public byte[] serialize(String topic, PayloadWithHeaders data) {
+            String json = gson.toJson(data);
+            return json.getBytes();
+        }
+    }, new Deserializer<PayloadWithHeaders>() {
+        @Override
+        public PayloadWithHeaders deserialize(String topic, byte[] data) {
+            PayloadWithHeaders payloadWithHeaders = gson.fromJson(new String(data),
+                    PayloadWithHeaders.class);
+            return payloadWithHeaders;
+        }
+    });
 
     public RevokeStream(Properties properties, StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
         this.uncaughtExceptionHandler = uncaughtExceptionHandler;
@@ -61,35 +76,39 @@ public class RevokeStream {
     }
 
     public void start() {
-        LOG.info("Start");
-        Serde<PayloadWithHeaders> payloadWithHeadersSerde = Serdes.serdeFrom(new Serializer<PayloadWithHeaders>() {
-            @Override
-            public byte[] serialize(String topic, PayloadWithHeaders data) {
-                String json = gson.toJson(data);
-                return json.getBytes();
-            }
-        }, new Deserializer<PayloadWithHeaders>() {
-            @Override
-            public PayloadWithHeaders deserialize(String topic, byte[] data) {
-                PayloadWithHeaders payloadWithHeaders = gson.fromJson(new String(data),
-                        PayloadWithHeaders.class);
-                return payloadWithHeaders;
-            }
-        });
+        startDelayToDelayWithHeader();
+        startRevokeStream();
+    }
+
+    public void startDelayToDelayWithHeader() {
+        LOG.info("Start delay to delay with header");
 
         StreamsBuilder streamsBuilder = new StreamsBuilder();
-        KStream<String, String> revokeStream = streamsBuilder.stream(this.revokeTopic);
-
-        streamsBuilder.stream(
-                this.delayTopic, Consumed.with(Serdes.String(), Serdes.ByteArray()))
+        streamsBuilder.stream(this.delayTopic, Consumed.with(Serdes.String(), Serdes.ByteArray()))
                 .process(() -> new HeaderExtractingProcessor())//
                 .to((key, funcContext, recordContext) -> {
                     return this.delayWithHeaderTopic;
                 }, Produced.with(Serdes.String(), payloadWithHeadersSerde));
 
+        var props = new Properties();
+        props.putAll(this.revokeStreamConfig);
+        props.put("application.id", props.get("application.id") + "DelayToDelayWithHeader");
+
+        this.delayToDelayWithHeader = new KafkaStreams(streamsBuilder.build(), props);
+        if (this.uncaughtExceptionHandler != null) {
+            this.delayToDelayWithHeader.setUncaughtExceptionHandler(this.uncaughtExceptionHandler);
+        }
+        this.delayToDelayWithHeader.start();
+    }
+
+    public void startRevokeStream() {
+        LOG.info("Start revoke to delayWithHeader");
+
+        StreamsBuilder streamsBuilder = new StreamsBuilder();
         KTable<String, PayloadWithHeaders> enrichedDetailTable = streamsBuilder.table(this.delayWithHeaderTopic,
                 Consumed.with(Serdes.String(), payloadWithHeadersSerde));
 
+        KStream<String, String> revokeStream = streamsBuilder.stream(this.revokeTopic);
         revokeStream//
                 .join(enrichedDetailTable, this::mergeValues)//
                 .process(() -> new HeaderPopulatingProcessor())//
@@ -103,7 +122,7 @@ public class RevokeStream {
     }
 
     private PayloadWithHeaders mergeValues(String delayEvent, PayloadWithHeaders originalProcessEvent) {
-        LOG.debug("Revoke message delayEvent={} originalProcessEvent={}", delayEvent, originalProcessEvent);
+        LOG.debug("revoke message delayEvent={} originalProcessEvent={}", delayEvent, originalProcessEvent);
         return originalProcessEvent;
     }
 
@@ -111,11 +130,10 @@ public class RevokeStream {
         try {
             String destinationTopic = new String(
                     recordContext.headers().headers(DelayService.DESTINATION_TOPIC).iterator().next().value());
-            LOG.debug("Revoke destinationTopic={} key={} processEvent={}",
-                    new Object[] { destinationTopic, key, processEventAsString });
+            LOG.debug("revoke to destinationTopic={} key={}", destinationTopic, key);
             if (destinationTopic == null || destinationTopic.isEmpty()) {
                 LOG.error(
-                        "Key={} destinationTopic could not be discovered. Forward to " + this.delayDeadLetterQueueTopic,
+                        "key={} destinationTopic could not be discovered. Forward to " + this.delayDeadLetterQueueTopic,
                         key);
                 return this.delayDeadLetterQueueTopic;
             }
@@ -129,5 +147,6 @@ public class RevokeStream {
     public void close() {
         LOG.info("close");
         this.stream.close();
+        this.delayToDelayWithHeader.close();
     }
 }

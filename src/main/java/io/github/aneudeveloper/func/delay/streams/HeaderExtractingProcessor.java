@@ -17,9 +17,11 @@ import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.streams.processor.api.Processor;
 import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.Record;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HeaderExtractingProcessor implements Processor<String, byte[], String, PayloadWithHeaders> {
-
+    private static final Logger LOG = LoggerFactory.getLogger(HeaderExtractingProcessor.class);
     private ProcessorContext<String, PayloadWithHeaders> context;
 
     @Override
@@ -29,6 +31,7 @@ public class HeaderExtractingProcessor implements Processor<String, byte[], Stri
 
     @Override
     public void process(Record<String, byte[]> record) {
+        LOG.debug("start extracting header information for record key={}", record.key());
         Headers headers = record.headers();
 
         PayloadWithHeaders enriched = new PayloadWithHeaders();
@@ -36,6 +39,7 @@ public class HeaderExtractingProcessor implements Processor<String, byte[], Stri
         if (headers != null) {
             for (Header header : headers) {
                 enriched.headers.put(header.key(), new String(header.value()));
+                LOG.debug("add header key={} value={}}", header.key(), header.value());
             }
         }
 

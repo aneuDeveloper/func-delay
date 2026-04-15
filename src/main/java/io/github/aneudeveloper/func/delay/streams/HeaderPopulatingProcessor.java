@@ -17,8 +17,11 @@ import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.streams.processor.api.Processor;
 import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.Record;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HeaderPopulatingProcessor implements Processor<String, PayloadWithHeaders, String, byte[]> {
+    private static final Logger LOG = LoggerFactory.getLogger(HeaderPopulatingProcessor.class);
 
     private ProcessorContext<String, byte[]> context;
 
@@ -29,15 +32,21 @@ public class HeaderPopulatingProcessor implements Processor<String, PayloadWithH
 
     @Override
     public void process(Record<String, PayloadWithHeaders> record) {
+        LOG.debug("start processing record key={}", record.key());
         RecordHeaders recordHeaders = new RecordHeaders();
-        for (Entry<String, String> entry : record.value().headers.entrySet()) {
-            recordHeaders.add(entry.getKey(), entry.getValue().getBytes(StandardCharsets.UTF_8));
+        if (record.value() != null && !record.value().headers.isEmpty()) {
+            LOG.debug("enrich record with header record key={} header count={}", record.key(),
+                    record.value().headers.size());
+            for (Entry<String, String> entry : record.value().headers.entrySet()) {
+                recordHeaders.add(entry.getKey(), entry.getValue().getBytes(StandardCharsets.UTF_8));
+            }
         }
-
+        
         Record<String, byte[]> originalRecord = record.withValue(record.value().originalMessagePayload)//
                 .withKey(record.key())//
                 .withHeaders(recordHeaders);
 
+        LOG.debug("forward enriched record key={}", record.key());
         context.forward(originalRecord);
     }
 
