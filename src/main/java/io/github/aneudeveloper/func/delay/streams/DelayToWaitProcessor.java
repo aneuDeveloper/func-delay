@@ -13,6 +13,7 @@ package io.github.aneudeveloper.func.delay.streams;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
+import org.apache.kafka.common.header.Header;
 import org.apache.kafka.streams.processor.api.Processor;
 import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.Record;
@@ -34,17 +35,39 @@ public class DelayToWaitProcessor implements Processor<String, byte[], String, L
 
     @Override
     public void process(Record<String, byte[]> record) {
-
-        String executeAtAsString = new String(
-                record.headers().headers(DelayService.EXECUTE_AT).iterator().next().value());
-
-        ZonedDateTime time = ZonedDateTime.parse(executeAtAsString, TIME_STAMP_FORMATTER);
-        if (time == null) {
-            throw new IllegalStateException("executeAt could not be parsed");
+        Long executeAt = null;
+        if (record.headers() != null) {
+            Iterable<Header> executeAtHeaders = record.headers().headers(DelayService.EXECUTE_AT);
+            if (executeAtHeaders != null) {
+                Header next = executeAtHeaders.iterator().next();
+                if (next != null) {
+                    String executeAtAsString = new String(next.value());
+                    try {
+                        ZonedDateTime time = ZonedDateTime.parse(executeAtAsString, TIME_STAMP_FORMATTER);
+                        if (time == null) {
+                            LOG.error("executeAt header was not provided. Use current time instead.");
+                        } else {
+                            executeAt = time.toInstant().toEpochMilli();
+                        }
+                    } catch (Exception e) {
+                        LOG.error(
+                                "executeAt header was defined but was not parsable. Provided executeAt={}. Use current time will be used instead.",
+                                executeAtAsString, e);
+                    }
+                } else {
+                    LOG.error("executeAt header was not provided. Use current time instead.");
+                }
+            } else {
+                LOG.error("executeAt header was not provided. Use current time instead.");
+            }
         }
 
-        Long executeAt = time.toInstant().toEpochMilli();
-        LOG.debug("Map from delayTable executeAt={} executeAtAsString={}", executeAt, executeAtAsString);
+        if (executeAt == null) {
+            LOG.warn("could not discover executeAt. The executeAt is set to current time.");
+            executeAt = ZonedDateTime.now().toInstant().toEpochMilli();
+        }
+
+        LOG.debug("discovered executeAt={}", executeAt);
 
         Record<String, Long> nextRecord = record.withValue(executeAt)
                 .withKey(record.key());
