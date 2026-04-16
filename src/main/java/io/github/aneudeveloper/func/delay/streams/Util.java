@@ -19,16 +19,20 @@ public class Util {
     private static final Logger LOG = LoggerFactory.getLogger(DelayToWaitProcessor.class);
 
     public static String getHeader(Headers headers, String headerKey) {
-        if (headers != null) {
-            Iterable<Header> headerIterator = headers.headers(headerKey);
-            if (headerIterator != null && headerIterator.iterator() != null
-                    && headerIterator.iterator().hasNext()) {
-                Header next = headerIterator.iterator().next();
-                if (next != null && next.value() != null) {
-                    String headerValueAsString = new String(next.value());
-                    return headerValueAsString;
+        try {
+            if (headers != null) {
+                Iterable<Header> headerIterator = headers.headers(headerKey);
+                if (headerIterator != null && headerIterator.iterator() != null) {
+                    Header next = headerIterator.iterator().next();
+                    if (next != null && next.value() != null) {
+                        String headerValueAsString = new String(next.value());
+                        return headerValueAsString;
+                    }
                 }
             }
+        } catch (Exception e) {
+            LOG.error("could not get header for headerKey={} continue processing", headerKey, e);
+            return null;
         }
 
         LOG.warn("headerKey={} was not defined in message", headerKey);
