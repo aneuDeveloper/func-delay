@@ -20,7 +20,6 @@ import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
 import org.apache.kafka.streams.kstream.Consumed;
-import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KTable;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.processor.RecordContext;
@@ -81,7 +80,8 @@ public class RevokeStream {
     }
 
     public void startDelayToDelayWithHeader() {
-        LOG.info("Start delay to delay with header");
+        LOG.info("stream start (header population): delayTopic={} delayWithHeaderTopic={}", this.delayTopic,
+                this.delayWithHeaderTopic);
 
         StreamsBuilder streamsBuilder = new StreamsBuilder();
         streamsBuilder.stream(this.delayTopic, Consumed.with(Serdes.String(), Serdes.ByteArray()))
@@ -102,17 +102,25 @@ public class RevokeStream {
     }
 
     public void startRevokeStream() {
-        LOG.info("Start revoke to delayWithHeader");
+        LOG.info("stream start (revoke and forward to destination topic): delayWithHeaderTopic={} revokeTopic={}",
+                this.delayWithHeaderTopic,
+                this.revokeTopic);
 
         StreamsBuilder streamsBuilder = new StreamsBuilder();
-        KTable<String, PayloadWithHeaders> enrichedDetailTable = streamsBuilder.table(this.delayWithHeaderTopic,
-                Consumed.with(Serdes.String(), payloadWithHeadersSerde));
 
-        KStream<String, String> revokeStream = streamsBuilder.stream(this.revokeTopic);
-        revokeStream//
-                .join(enrichedDetailTable, this::mergeValues)//
-                .process(() -> new HeaderPopulatingProcessor())//
-                .to(this::selectDestinationTopic, Produced.with(Serdes.String(), Serdes.ByteArray()));
+        KTable<String, PayloadWithHeaders> enrichedWithHeaderTable = streamsBuilder.table(this.delayWithHeaderTopic,
+                Consumed.with(Serdes.String(), payloadWithHeadersSerde));
+        KTable<String, Long> revokeTable = streamsBuilder.table(this.revokeTopic,
+                Consumed.with(Serdes.String(), Serdes.Long()));
+
+        KTable<String, PayloadWithHeaders> join = enrichedWithHeaderTable.join(revokeTable,
+                (withHeaders, revokeMessage) -> {
+                    LOG.debug("revoke originalMessage={} revokeMessage={}", withHeaders, revokeMessage);
+                    return withHeaders;
+                });
+        join.toStream().process(() -> new HeaderPopulatingProcessor())
+                .to(this::selectDestinationTopic, Produced.with(Serdes.String(),
+                        Serdes.ByteArray()));
 
         this.stream = new KafkaStreams(streamsBuilder.build(), this.revokeStreamConfig);
         if (this.uncaughtExceptionHandler != null) {
@@ -121,8 +129,9 @@ public class RevokeStream {
         this.stream.start();
     }
 
-    private PayloadWithHeaders mergeValues(String delayEvent, PayloadWithHeaders originalProcessEvent) {
-        LOG.debug("revoke message delayEvent={} originalProcessEvent={}", delayEvent, originalProcessEvent);
+    private PayloadWithHeaders mergeValues(String revokeMessage, PayloadWithHeaders originalProcessEvent) {
+        LOG.debug("revoke message revokeMessage={} originalProcessEvent={}", revokeMessage,
+                originalProcessEvent.toString());
         return originalProcessEvent;
     }
 

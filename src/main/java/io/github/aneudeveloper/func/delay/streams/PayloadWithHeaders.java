@@ -15,4 +15,13 @@ import java.util.Map;
 public class PayloadWithHeaders {
     public Map<String, String> headers;
     public byte[] originalMessagePayload;
+
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("header count: ").append(headers == null ? 0 : headers.size());
+        builder.append(" ");
+        builder.append("message bytes count: ")
+                .append(originalMessagePayload == null ? 0 : originalMessagePayload.length);
+        return builder.toString();
+    }
 }
